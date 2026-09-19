@@ -1707,3 +1707,126 @@ const styles = StyleSheet.create({
   },
 });
 ```
+**3. Добавить жест нажатия**  
+React Native Gesture Handler позволяет нам добавлять поведение, когда он обнаруживает сенсорный ввод, например, двойное нажатие.
+
+В src/components/emioji-sticker.tsx файле:
+
+    1. Импорт Gesture и GestureDetector от react-native-gesture-handler.
+    2. Чтобы распознать кран на наклейке, импортируйте useAnimatedStyle, useSharedValue, и withSpring от react-native-reanimated чтобы оживить стиль <Animated.Image>.
+    3. Внутри EmojiSticker компонент, создать ссылку, называемую scaleImage с помощью useSharedValue() Крюк. Это возьмет на себя ценность imageSize В качестве его первоначального значения.
+```
+// ...rest of the import statements remain same
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+
+export default function EmojiSticker({ imageSize, stickerSource }: Props) {
+  const scaleImage = useSharedValue(imageSize);
+
+  return (
+    // ...rest of the code remains same
+  )
+}
+```
+Создание общей ценности с использованием useSharedValue() У крюка есть много преимуществ. Это помогает мутировать данные и запускает анимацию на основе текущего значения. Мы можем получить доступ и изменить общее значение, используя .value собственность. Мы создадим doubleTap объект масштабирования начального значения и использования Gesture.Tap() чтобы оживить переход при масштабировании изображения наклейки. Чтобы определить количество необходимых кранов, мы добавим numberOfTaps().
+
+Создать следующий объект в EmojiSticker компонент:
+```
+const doubleTap = Gesture.Tap()
+  .numberOfTaps(2)
+  .onStart(() => {
+    if (scaleImage.value !== imageSize * 2) {
+      scaleImage.value = scaleImage.value * 2;
+    } else {
+      scaleImage.value = Math.round(scaleImage.value / 2);
+    }
+  });
+```
+Чтобы оживить переход, давайте воспользуемся весенней анимацией. Это заставит его чувствовать себя живым, потому что он основан на реальной физике пружины. Мы будем использовать withSpring() Функция, обеспечиваемая react-native-reanimated.
+
+На изображении наклейки, мы будем использовать useAnimatedStyle() Крюк для создания объекта стиля. Это поможет нам обновлять стили, используя общие значения, когда происходит анимация. Мы также масштабируем размер изображения, манипулируя width и height свойства. Первоначальные значения этих свойств устанавливаются на imageSize.
+
+Создать a imageStyle переменная и добавить ее в EmojiSticker компонент:
+```
+const imageStyle = useAnimatedStyle(() => {
+  return {
+    width: withSpring(scaleImage.value),
+    height: withSpring(scaleImage.value),
+  };
+});
+```
+Далее, оберните `<Animated.Image>` Компонент с `<GestureDetector>` и изменить style Опора на `<Animated.Image>` чтобы пройти imageStyle.
+```
+import { ImageSourcePropType, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+
+type Props = {
+  imageSize: number;
+  stickerSource: ImageSourcePropType;
+};
+
+export default function EmojiSticker({ imageSize, stickerSource }: Props) {
+  const scaleImage = useSharedValue(imageSize);
+
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .onStart(() => {
+      if (scaleImage.value !== imageSize * 2) {
+        scaleImage.value = scaleImage.value * 2;
+      } else {
+        scaleImage.value = Math.round(scaleImage.value / 2);
+      }
+    });
+
+  const imageStyle = useAnimatedStyle(() => {
+    return {
+      width: withSpring(scaleImage.value),
+      height: withSpring(scaleImage.value),
+    };
+  });
+
+  return (
+    <View style={{ top: -350 }}>
+       <GestureDetector gesture={doubleTap}>
+        <Animated.Image
+          source={stickerSource}
+          resizeMode="contain"
+          style={[{ width: imageSize, height: imageSize }, imageStyle]}
+        />
+      </GestureDetector>
+    </View>
+  );
+}
+```
+В вышеприведенном фрагменте, gesture реквизит принимает ценность doubleTap чтобы вызвать жест, когда пользователь дважды нажимает на изображение наклейки.
+**4. Добавить жест сковороды**  
+Чтобы распознать жест перетаскивания на наклейке и отследить ее движение, мы будем использовать жест сковороды. В src/components/emoidji-sticker.tsx :
+
+    1. Создайте две новые общие ценности: translateX и translateY.
+    2. Заменить <View> с <Animated.View> компонент.
+```
+export default function EmojiSticker({ imageSize, stickerSource }: Props) {
+  const scaleImage = useSharedValue(imageSize);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  // ...rest of the code remains same
+
+  return (
+    <Animated.View style={{ top: -350 }}>
+      <GestureDetector gesture={doubleTap}>
+        {/* ...rest of the code remains same */}
+      </GestureDetector>
+    </Animated.View>
+  );
+}
+```
+Давайте узнаем, что делает вышеприведенный код:
+
+    Определенные значения перевода будут перемещать наклейку по экрану. Поскольку наклейка движется по обеим осям, нам нужно отслеживать значения X и Y.
+    В useSharedValue() Крючки, мы установили обе переменные перевода, чтобы иметь начальную позицию 0. Это начальная позиция наклейки и отправная точка. Это значение устанавливает начальную позицию наклейки, когда начинается жест.
+
+На предыдущем шаге мы спровоцировали onStart() обратный звонок для жеста крана, прикованного к Gesture.Tap() Метод. Для жеста сковороды укажите onChange() обратный звонок, который проходит, когда жест активен и движется.
+
+    Создать a drag объект, чтобы справиться с жестом сковороды. The onChange() обратный звонок принимает event в качестве параметра. changeX и changeY свойства удерживают изменение позиции с момента последнего события и обновляют значения, хранящиеся в translateX и translateY.
+    Определить containerStyle Объект, использующий useAnimatedStyle() Крюк. Это вернет множество преобразований. Для <Animated.View> компонент, нам нужно установить transform Имущество для translateX и translateY Ценности. Это изменит положение наклейки, когда жест активен.
